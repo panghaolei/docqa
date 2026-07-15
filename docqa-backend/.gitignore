@@ -1,0 +1,6 @@
+# 后端上传目录（运行时生成）
+uploads/
+target/
+*.log
+.idea/
+*.iml
