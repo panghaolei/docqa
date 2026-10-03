@@ -1,5 +1,6 @@
 package com.docqa.service;
 
+import com.docqa.common.UserContext;
 import com.docqa.entity.DocumentEntity;
 import com.docqa.repository.DocumentRepository;
 import com.docqa.vector.SearchResult;
@@ -95,7 +96,7 @@ public class QaService {
         // 2. 向量检索（带相似度阈值过滤）
         List<SearchResult> hits;
         try {
-            hits = vectorService.searchWithMeta(question, topK, similarityThreshold);
+            hits = vectorService.searchWithMeta(question, topK, similarityThreshold, UserContext.currentUserId());
         } catch (Exception e) {
             log.warn("会话 {} 向量检索异常，提示用户: {}", sessionId, e.getMessage());
             String reply = "抱歉，检索服务暂时不可用，请稍后再试或检查 Embedding 配置。";
@@ -173,7 +174,8 @@ public class QaService {
     /** 计算已解析完成（DONE）的文档数量 */
     private long countReadyDocs() {
         try {
-            return documentRepository.findAll().stream()
+            Long userId = UserContext.currentUserId();
+            return documentRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                     .filter(d -> "DONE".equals(d.getStatus()))
                     .count();
         } catch (Exception e) {

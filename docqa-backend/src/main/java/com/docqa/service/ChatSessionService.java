@@ -125,6 +125,10 @@ public class ChatSessionService {
     }
 
     public void deleteSession(Long id) {
+        // 与 DocumentService.delete 对齐：删除不存在的资源必须明确失败，而非静默成功
+        if (!sessionRepository.existsById(id)) {
+            throw new RuntimeException("会话不存在");
+        }
         messageRepository.findBySessionIdOrderByCreatedAtAsc(id)
                 .forEach(m -> messageRepository.delete(m));
         sessionRepository.deleteById(id);

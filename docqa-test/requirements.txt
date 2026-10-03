@@ -1,0 +1,31 @@
+# ================= DocQA 自动化测试工程依赖 =================
+# 安装： pip install -r requirements.txt
+# 生成测试文档需要 reportlab / python-docx；LLM-as-a-Judge 评测需要 openai
+
+# --- 测试框架核心 ---
+pytest==8.3.3
+pytest-html==4.1.1               # HTML 测试报告
+pytest-timeout==2.3.1            # 用例级超时保护，防止 SSE 卡死
+pytest-rerunfailures==14.0       # 大模型不确定用例的失败重跑
+pytest-xdist==3.6.1              # 并发执行（可选）
+
+# --- 接口 / 协议 ---
+requests==2.32.3                 # HTTP + SSE 流式请求
+jsonschema==4.23.0               # 响应契约校验
+tenacity==9.0.0                  # 重试策略（文档解析轮询等）
+
+# --- 配置与数据 ---
+PyYAML==6.0.2
+python-dotenv==1.0.1
+Faker==30.0.0                    # 用户名 / 文本随机数据
+
+# --- 测试文档生成（构造知识库语料）---
+reportlab==4.2.2                 # 生成 PDF 测试文档（含中文字体）
+python-docx==1.1.2               # 生成 Word 测试文档
+pypdf==5.0.1                     # 校验 PDF 内容
+
+# --- 大模型评测（LLM-as-a-Judge，复用硅基流动 OpenAI 兼容接口）---
+openai==1.51.0
+
+# --- 前端 UI 自动化（可选，未安装时 e2e 用例自动跳过）---
+# playwright==1.47.0

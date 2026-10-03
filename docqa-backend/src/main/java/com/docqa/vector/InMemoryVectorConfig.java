@@ -94,6 +94,29 @@ public class InMemoryVectorConfig {
                     .toList();
         }
 
+        /** 按用户隔离检索：先按 metadata.userId 过滤，再计算相似度取 topK，保证召回结果只属于当前用户。 */
+        public List<Document> similaritySearch(String query, int topK, double threshold, Long userId) {
+            if (store.isEmpty() || query == null) return List.of();
+            float[] qvec = embeddingModel.embed(query);
+            int k = topK > 0 ? topK : 4;
+            return store.stream()
+                    .filter(dv -> userId == null || userId.equals(userIdOf(dv.doc)))
+                    .map(dv -> Map.entry(dv, cosine(qvec, dv.vector)))
+                    .filter(e -> threshold <= 0 || e.getValue() >= threshold)
+                    .sorted(Comparator.<Map.Entry<DocVector, Double>>comparingDouble(Map.Entry::getValue).reversed())
+                    .limit(k)
+                    .map(Map.Entry::getKey)
+                    .map(dv -> dv.doc)
+                    .toList();
+        }
+
+        private static Long userIdOf(Document d) {
+            Map<String, Object> meta = d.getMetadata();
+            if (meta == null) return null;
+            Object u = meta.get("userId");
+            return u instanceof Number n ? n.longValue() : null;
+        }
+
         /** 余弦相似度 */
         private static double cosine(float[] a, float[] b) {
             if (a.length != b.length) return 0;

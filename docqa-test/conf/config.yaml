@@ -1,0 +1,60 @@
+# ============================================================
+#  DocQA 自动化测试工程 —— 主配置
+#  所有项均可用环境变量覆盖，见 conf/settings.py
+# ============================================================
+
+env: local
+
+server:
+  base_url: "${DOCQA_TEST_BASE_URL:-http://localhost:8080/api}"
+  front_url: "${DOCQA_TEST_FRONT_URL:-http://localhost:5173}"
+  timeout: 30            # 普通接口超时（秒）
+  stream_timeout: 120    # SSE 流式问答超时（秒），大模型生成较慢
+  probe_path: "/document/list"   # 服务存活探测路径（未带 token 期望 401）
+
+auth:
+  username_prefix: "qa_auto_"    # 每次运行生成唯一测试账号，避免脏数据交叉
+  token_header: "Authorization"
+  token_scheme: "Bearer"
+
+# 被测系统 RAG 参数（用于断言实现与文档描述是否一致）
+rag:
+  chunk_size: 500
+  chunk_overlap: 80
+  top_k: 4
+  similarity_threshold: 0.35
+  history_max_rounds: 6
+  chitchat_max_len: 30          # 超过该长度的问句不再判定为闲聊
+
+# ---- 文档上传目录（与后端 docqa.upload.dir 对应，用于校验落盘）----
+upload:
+  backend_dir: "../uploads"
+
+# ---- LLM-as-a-Judge（复用硅基流动 OpenAI 兼容接口）----
+judge:
+  enabled: true
+  base_url: "https://api.siliconflow.cn/v1"
+  api_key: "${SILICONFLOW_API_KEY:-}"
+  model: "${DOCQA_TEST_JUDGE_MODEL:-deepseek-ai/DeepSeek-V3}"
+  timeout: 60
+  temperature: 0.0
+
+# ---- 质量门禁阈值：任意一项不达标即视为测试失败 ----
+thresholds:
+  first_token_latency_ms: 15000     # SSE 首 token 时延上限
+  full_answer_latency_ms: 60000     # 完整回答时延上限
+  short_circuit_latency_ms: 3000    # 短路（不调大模型）响应上限
+  answer_min_chars: 8               # 回答最小长度
+  keyword_hit_rate: 0.75            # 评测集关键词命中率下限
+  citation_accuracy: 0.75           # 引用来源准确率下限
+  judge_min_score: 3.0              # LLM 判分（1~5）平均分下限
+  p95_latency_ms: 45000             # 问答 P95 时延上限
+  concurrent_users: 5               # 性能用例并发数
+  concurrent_success_rate: 1.0      # 并发成功率下限
+  upload_p95_latency_ms: 20000      # 文档上传 P95 时延上限
+
+# ---- 评测集抽样：跑全量耗时长，可调小 ----
+evaluation:
+  dataset: "evaluation/dataset.yaml"
+  max_cases: 8                      # 最多执行多少条评测问题
+  sample_seed: 20260915             # 固定随机种子，保证结果可复现

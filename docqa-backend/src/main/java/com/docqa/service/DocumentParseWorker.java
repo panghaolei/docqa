@@ -67,7 +67,7 @@ public class DocumentParseWorker {
             // 3. 向量化（单独捕获异常，失败不影响文档状态）
             String vectorWarn = null;
             try {
-                vectorService.storeChunks(docId, doc.getFileName(), chunks);
+                vectorService.storeChunks(docId, doc.getFileName(), chunks, doc.getUserId());
             } catch (Exception ve) {
                 vectorWarn = "文档解析成功，但向量化失败（可能未配置有效的 Embedding API Key）: "
                         + (ve.getMessage() == null ? ve.getClass().getSimpleName() : ve.getMessage());

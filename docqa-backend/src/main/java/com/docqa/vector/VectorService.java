@@ -34,11 +34,12 @@ public class VectorService {
      * @param docName 文档名（用于回答时标注来源）
      * @param chunks  切片列表
      */
-    public void storeChunks(Long docId, String docName, List<String> chunks) {
+    public void storeChunks(Long docId, String docName, List<String> chunks, Long userId) {
         List<Document> docs = chunks.stream().map(text -> {
             Map<String, Object> meta = new HashMap<>();
             meta.put("docId", docId);
             meta.put("docName", docName == null ? "未知文档" : docName);
+            meta.put("userId", userId);
             return new Document(text, meta);
         }).collect(Collectors.toList());
         vectorStore.add(docs);
@@ -53,11 +54,23 @@ public class VectorService {
      * @param threshold 相似度阈值（0~1），低于该值的结果被过滤
      * @return 命中的检索结果（含文档名与分数）
      */
-    public List<SearchResult> searchWithMeta(String query, int topK, double threshold) {
-        SearchRequest req = SearchRequest.query(query)
-                .withTopK(topK)
-                .withSimilarityThreshold(threshold);
-        List<Document> hits = vectorStore.similaritySearch(req);
+    public List<SearchResult> searchWithMeta(String query, int topK, double threshold, Long userId) {
+        List<Document> hits;
+        if (userId != null && vectorStore instanceof InMemoryVectorConfig.InMemoryVectorStore im) {
+            // 内存实现：检索前按 userId 过滤，保证 topK 结果都归属于当前用户
+            hits = im.similaritySearch(query, topK, threshold, userId);
+        } else {
+            SearchRequest req = SearchRequest.query(query)
+                    .withTopK(topK)
+                    .withSimilarityThreshold(threshold);
+            hits = vectorStore.similaritySearch(req);
+            // 其它实现（如 Redis）：若不支持按 metadata 过滤，则在召回后二次过滤兜底
+            if (userId != null && hits != null) {
+                hits = hits.stream()
+                        .filter(d -> userId.equals(userIdOf(d)))
+                        .collect(Collectors.toList());
+            }
+        }
         if (hits == null || hits.isEmpty()) return List.of();
         return hits.stream().map(d -> {
             Map<String, Object> meta = d.getMetadata();
@@ -68,6 +81,13 @@ public class VectorService {
                     ? n.doubleValue() : 0.0;
             return new SearchResult(d.getContent(), name, score);
         }).collect(Collectors.toList());
+    }
+
+    private Long userIdOf(Document d) {
+        Map<String, Object> meta = d.getMetadata();
+        if (meta == null) return null;
+        Object u = meta.get("userId");
+        return u instanceof Number n ? n.longValue() : null;
     }
 
     /**

@@ -1,0 +1,75 @@
+# ============================================================
+#  RAG 问答评测集（Golden Set）
+#  语料来源：utils/doc_factory.py 中的 KB_TEXT（星云科技员工手册）
+#  字段说明：
+#    id              用例编号
+#    question        提问
+#    keywords        期望答案中出现的关键事实（宽松匹配：忽略空白与标点）
+#    expected_source 期望被引用的文档名（用于计算引用准确率）
+#    must_not_contain 期望回答中不应出现的内容（用于检测编造）
+#    category        分类：事实抽取 / 数值计算 / 条件判断 / 边界
+# ============================================================
+
+- id: q01
+  category: 事实抽取
+  question: "入职满 3 年的员工每年可以享受多少天年假？"
+  keywords: ["10 天", "10天"]
+  expected_source: "星云科技员工手册"
+  must_not_contain: ["15 天", "5 天"]
+
+- id: q02
+  category: 事实抽取
+  question: "工作日加班的加班费是按几倍计算的？"
+  keywords: ["1.5 倍", "1.5倍"]
+  expected_source: "星云科技员工手册"
+
+- id: q03
+  category: 数值阈值
+  question: "单笔报销金额超过多少钱需要财务总监审批？"
+  keywords: ["5000 元", "5000元", "5000"]
+  expected_source: "星云科技员工手册"
+
+- id: q04
+  category: 条件判断
+  question: "差旅费需要在出差结束后几个工作日内提交报销单？"
+  keywords: ["7 个工作日", "7个工作日", "7 天", "7天"]
+  expected_source: "星云科技员工手册"
+
+- id: q05
+  category: 事实抽取
+  question: "公司的调薪评估一般在每年哪两个月份进行？"
+  keywords: ["4 月", "4月"]
+  expected_source: "星云科技员工手册"
+
+- id: q06
+  category: 事实抽取
+  question: "每位员工每年享有的培训预算是多少钱？"
+  keywords: ["3000 元", "3000元", "3000"]
+  expected_source: "星云科技员工手册"
+
+- id: q07
+  category: 条件判断
+  question: "核心技术岗位员工离职后的竞业限制期限是多久？"
+  keywords: ["2 年", "2年", "两年"]
+  expected_source: "星云科技员工手册"
+
+- id: q08
+  category: 事实抽取
+  question: "新员工的试用期是几个月？试用期工资如何发放？"
+  keywords: ["3 个月", "3个月", "80%", "80"]
+  expected_source: "星云科技员工手册"
+
+- id: q09
+  category: 事实抽取
+  question: "法定节假日加班按几倍计算加班费？"
+  keywords: ["3 倍", "3倍"]
+  expected_source: "星云科技员工手册"
+
+- id: q10
+  category: 边界-域外提问
+  question: "请帮我推荐一份适合新手的 Python 学习路线。"
+  keywords: []
+  expected_source: null
+  must_not_contain: []
+  # 期望行为：文档中无相关内容，回答应说明"未找到相关内容"而非编造
+  expect_no_answer: true

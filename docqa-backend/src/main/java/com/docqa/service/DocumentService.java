@@ -7,6 +7,7 @@ import com.docqa.mq.ParseMessage;
 import com.docqa.repository.DocumentRepository;
 import com.docqa.vector.VectorService;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -21,6 +22,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static com.docqa.config.RabbitMqConfig.EXCHANGE;
@@ -37,6 +40,8 @@ public class DocumentService {
     private final ObjectProvider<RabbitTemplate> rabbitTemplateProvider;
     private final DocumentParseWorker parseWorker;
     private final VectorService vectorService;
+    /** 本地解析线程池：local 模式下异步解析，避免大文件同步 embedding 阻塞上传请求 */
+    private final ExecutorService parseExecutor = Executors.newFixedThreadPool(2);
 
     @Value("${docqa.upload.dir:./uploads}")
     private String uploadDir;
@@ -58,6 +63,11 @@ public class DocumentService {
     public void init() throws IOException {
         Files.createDirectories(Paths.get(uploadDir).toAbsolutePath());
         log.info("DocQA 运行模式: {}", mode);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        parseExecutor.shutdown();
     }
 
     /**
@@ -93,9 +103,9 @@ public class DocumentService {
                 parseWorker.process(docId);
             }
         } else {
-            // local 模式：同步解析
-            log.info("文档已上传，开始同步解析 docId={}", docId);
-            parseWorker.process(docId);
+            // local 模式：线程池异步解析（大文件不再阻塞上传请求）
+            log.info("文档已上传，提交异步解析任务 docId={}", docId);
+            parseExecutor.submit(() -> parseWorker.process(docId));
         }
 
         // 重新查询最新状态返回
